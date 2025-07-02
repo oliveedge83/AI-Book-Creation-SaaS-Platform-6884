@@ -17,7 +17,9 @@ export default [
         JSX: true,
       },
       parserOptions: {
-        ecmaFeatures: { jsx: true },
+        ecmaFeatures: {
+          jsx: true,
+        },
         sourceType: 'module',
       },
     },

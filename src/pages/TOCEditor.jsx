@@ -7,7 +7,7 @@ import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
-const { FiPlus, FiEdit3, FiTrash2, FiSave, FiArrowRight, FiMove, FiList } = FiIcons;
+const { FiPlus, FiEdit3, FiTrash2, FiSave, FiArrowRight, FiMove, FiList, FiFileText, FiLink, FiZap } = FiIcons;
 
 const TOCEditor = () => {
   const { id } = useParams();
@@ -40,8 +40,9 @@ const TOCEditor = () => {
       setBook(currentBook);
       setChapters(currentBook.chapters || []);
 
-      // If no chapters exist, generate initial TOC
-      if (!currentBook.chapters || currentBook.chapters.length === 0) {
+      // If no chapters exist and book has AI model, generate initial TOC
+      if ((!currentBook.chapters || currentBook.chapters.length === 0) && 
+          currentBook.selected_model) {
         generateInitialTOC(currentBook);
       }
     } catch (error) {
@@ -59,51 +60,39 @@ const TOCEditor = () => {
       // Generate initial chapter structure based on book details
       const initialChapters = [
         {
-          title: 'Introduction',
-          order_index: 0,
+          title: 'Introduction and Foundations',
+          description: 'Setting the groundwork for understanding the subject',
           topics: [
-            { title: 'Overview', objectives: 'Introduce the main concepts' },
-            { title: 'What You\'ll Learn', objectives: 'Set expectations for readers' }
+            { title: 'Welcome and Overview', objectives: 'Understand the scope and goals of this book', estimated_words: 1200 },
+            { title: 'Core Concepts and Terminology', objectives: 'Master the fundamental vocabulary and concepts', estimated_words: 1800 },
+            { title: 'Historical Context and Evolution', objectives: 'Learn how this field has developed over time', estimated_words: 1500 }
           ]
         },
         {
-          title: 'Getting Started',
-          order_index: 1,
+          title: 'Fundamental Principles',
+          description: 'Deep dive into the core principles and theories',
           topics: [
-            { title: 'Prerequisites', objectives: 'Required knowledge and tools' },
-            { title: 'Setup and Configuration', objectives: 'Initial setup instructions' }
-          ]
-        },
-        {
-          title: 'Core Concepts',
-          order_index: 2,
-          topics: [
-            { title: 'Fundamental Principles', objectives: 'Core theory and concepts' },
-            { title: 'Key Terminology', objectives: 'Important terms and definitions' }
+            { title: 'Theoretical Framework', objectives: 'Understand the underlying theoretical foundation', estimated_words: 2000 },
+            { title: 'Key Methodologies', objectives: 'Learn the primary approaches and methodologies', estimated_words: 1800 },
+            { title: 'Best Practices and Standards', objectives: 'Discover industry best practices and standards', estimated_words: 1600 }
           ]
         },
         {
           title: 'Practical Applications',
-          order_index: 3,
+          description: 'Real-world implementation and case studies',
           topics: [
-            { title: 'Real-world Examples', objectives: 'Practical use cases' },
-            { title: 'Best Practices', objectives: 'Recommended approaches' }
+            { title: 'Implementation Strategies', objectives: 'Learn how to apply concepts in practice', estimated_words: 2200 },
+            { title: 'Case Studies and Examples', objectives: 'Analyze real-world examples and success stories', estimated_words: 1900 },
+            { title: 'Tools and Technologies', objectives: 'Master the essential tools and technologies', estimated_words: 1700 }
           ]
         },
         {
-          title: 'Advanced Topics',
-          order_index: 4,
+          title: 'Advanced Techniques',
+          description: 'Advanced concepts and cutting-edge approaches',
           topics: [
-            { title: 'Complex Scenarios', objectives: 'Advanced implementations' },
-            { title: 'Troubleshooting', objectives: 'Common issues and solutions' }
-          ]
-        },
-        {
-          title: 'Conclusion',
-          order_index: 5,
-          topics: [
-            { title: 'Summary', objectives: 'Recap key points' },
-            { title: 'Next Steps', objectives: 'Guidance for continued learning' }
+            { title: 'Advanced Strategies', objectives: 'Explore sophisticated techniques and approaches', estimated_words: 2100 },
+            { title: 'Optimization and Performance', objectives: 'Learn how to optimize and improve performance', estimated_words: 1800 },
+            { title: 'Future Trends and Innovations', objectives: 'Understand emerging trends and future directions', estimated_words: 1600 }
           ]
         }
       ];
@@ -114,6 +103,7 @@ const TOCEditor = () => {
         const { data: newChapter, error } = await dbHelpers.createChapter({
           book_id: bookData.id,
           title: chapter.title,
+          description: chapter.description,
           order_index: chapter.order_index
         });
         
@@ -125,6 +115,7 @@ const TOCEditor = () => {
             chapter_id: newChapter.id,
             title: topic.title,
             objectives: topic.objectives,
+            estimated_words: topic.estimated_words,
             order_index: topicIndex,
             status: 'draft'
           });
@@ -140,7 +131,7 @@ const TOCEditor = () => {
       }
 
       setChapters(createdChapters);
-      toast.success('Initial table of contents generated!');
+      toast.success('Table of contents generated!');
       
     } catch (error) {
       toast.error('Failed to generate TOC');
@@ -155,6 +146,7 @@ const TOCEditor = () => {
       const { data, error } = await dbHelpers.createChapter({
         book_id: id,
         title: 'New Chapter',
+        description: '',
         order_index: chapters.length
       });
       
@@ -188,6 +180,7 @@ const TOCEditor = () => {
         chapter_id: chapterId,
         title: 'New Topic',
         objectives: '',
+        estimated_words: 1500,
         order_index: chapter.topics?.length || 0,
         status: 'draft'
       });
@@ -265,8 +258,14 @@ const TOCEditor = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{book?.title}</h1>
               <p className="text-gray-600 mt-1">
-                Edit your table of contents and chapter structure
+                Edit your table of contents and add additional context for each chapter/topic
               </p>
+              {book?.selected_model && (
+                <div className="mt-2 inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                  <SafeIcon icon={FiZap} className="h-4 w-4 mr-1" />
+                  AI Model: {book.selected_model}
+                </div>
+              )}
             </div>
             <div className="flex space-x-4">
               <button
@@ -280,15 +279,15 @@ const TOCEditor = () => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={proceedToContentGeneration}
-                disabled={saving}
+                disabled={saving || chapters.length === 0}
                 className="inline-flex items-center px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50"
               >
                 {saving ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                 ) : (
-                  <SafeIcon icon={FiArrowRight} className="h-4 w-4 mr-2" />
+                  <SafeIcon icon={book?.selected_model ? FiZap : FiArrowRight} className="h-4 w-4 mr-2" />
                 )}
-                Generate Content
+                {book?.selected_model ? 'Generate AI Content' : 'Start Manual Editing'}
               </motion.button>
             </div>
           </div>
@@ -307,13 +306,22 @@ const TOCEditor = () => {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3 flex-1">
                     <SafeIcon icon={FiList} className="h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={chapter.title}
-                      onChange={(e) => updateChapter(chapter.id, { title: e.target.value })}
-                      className="text-lg font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 flex-1"
-                      placeholder="Chapter title"
-                    />
+                    <div className="flex-1 space-y-2">
+                      <input
+                        type="text"
+                        value={chapter.title}
+                        onChange={(e) => updateChapter(chapter.id, { title: e.target.value })}
+                        className="text-lg font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 w-full"
+                        placeholder="Chapter title"
+                      />
+                      <textarea
+                        value={chapter.description || ''}
+                        onChange={(e) => updateChapter(chapter.id, { description: e.target.value })}
+                        rows={2}
+                        className="text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 w-full resize-none"
+                        placeholder="Chapter description and context for AI generation..."
+                      />
+                    </div>
                   </div>
                   <button
                     onClick={() => addTopic(chapter.id)}
@@ -339,6 +347,7 @@ const TOCEditor = () => {
                           className="w-full font-medium text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1"
                           placeholder="Topic title"
                         />
+                        
                         <textarea
                           value={topic.objectives || ''}
                           onChange={(e) => updateTopic(topic.id, { objectives: e.target.value })}
@@ -346,6 +355,51 @@ const TOCEditor = () => {
                           className="w-full text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 resize-none"
                           placeholder="Learning objectives and key points for this topic..."
                         />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Estimated Words
+                            </label>
+                            <input
+                              type="number"
+                              value={topic.estimated_words || 1500}
+                              onChange={(e) => updateTopic(topic.id, { estimated_words: parseInt(e.target.value) })}
+                              className="w-full text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                              min="500"
+                              max="5000"
+                              step="100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Status
+                            </label>
+                            <select
+                              value={topic.status || 'draft'}
+                              onChange={(e) => updateTopic(topic.id, { status: e.target.value })}
+                              className="w-full text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                            >
+                              <option value="draft">Draft</option>
+                              <option value="ready">Ready for Generation</option>
+                              <option value="generating">Generating</option>
+                              <option value="completed">Completed</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                            Additional Context for AI (optional)
+                          </label>
+                          <textarea
+                            value={topic.additional_context || ''}
+                            onChange={(e) => updateTopic(topic.id, { additional_context: e.target.value })}
+                            rows={3}
+                            className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 resize-none"
+                            placeholder="Add specific instructions, must-have subtopics, or additional context for AI content generation..."
+                          />
+                        </div>
                       </div>
                     </div>
                   )) || (
