@@ -23,18 +23,9 @@ export const AuthProvider = ({ children }) => {
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user ?? null);
       } catch (error) {
-        console.log('Demo mode: No Supabase connection');
-        // For demo purposes, set a demo user after a short delay
-        setTimeout(() => {
-          setUser({
-            id: 'demo-user-123',
-            email: 'demo@example.com',
-            user_metadata: {
-              full_name: 'Demo User',
-              role: 'user'
-            }
-          });
-        }, 1000);
+        console.error('Error getting session:', error);
+        // For demo mode in case of connection issues
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -53,7 +44,7 @@ export const AuthProvider = ({ children }) => {
 
       return () => subscription?.unsubscribe();
     } catch (error) {
-      console.log('Demo mode: Auth state change listener not available');
+      console.error('Auth state change listener error:', error);
     }
   }, []);
 
@@ -67,27 +58,16 @@ export const AuthProvider = ({ children }) => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        toast.error(error.message);
+        return { data: null, error };
+      }
 
-      // For demo, set user immediately
-      setUser({
-        id: 'demo-user-' + Date.now(),
-        email,
-        user_metadata: userData
-      });
-
-      toast.success('Account created successfully! (Demo mode)');
+      toast.success('Account created successfully! Please check your email for verification.');
       return { data, error: null };
     } catch (error) {
-      console.log('Demo mode: Creating demo user');
-      const demoUser = {
-        id: 'demo-user-' + Date.now(),
-        email,
-        user_metadata: userData
-      };
-      setUser(demoUser);
-      toast.success('Account created successfully! (Demo mode)');
-      return { data: { user: demoUser }, error: null };
+      toast.error(error.message || 'Failed to create account');
+      return { data: null, error };
     }
   };
 
@@ -98,23 +78,16 @@ export const AuthProvider = ({ children }) => {
         password
       });
 
-      if (error) throw error;
+      if (error) {
+        toast.error(error.message);
+        return { data: null, error };
+      }
 
       toast.success('Welcome back!');
       return { data, error: null };
     } catch (error) {
-      console.log('Demo mode: Signing in demo user');
-      const demoUser = {
-        id: 'demo-user-123',
-        email,
-        user_metadata: {
-          full_name: 'Demo User',
-          role: email.includes('admin') ? 'admin' : 'user'
-        }
-      };
-      setUser(demoUser);
-      toast.success('Welcome back! (Demo mode)');
-      return { data: { user: demoUser }, error: null };
+      toast.error(error.message || 'Failed to sign in');
+      return { data: null, error };
     }
   };
 
@@ -127,11 +100,14 @@ export const AuthProvider = ({ children }) => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        toast.error(error.message);
+        return { data: null, error };
+      }
 
       return { data, error: null };
     } catch (error) {
-      toast.error('OAuth not available in demo mode');
+      toast.error(error.message || 'OAuth sign in failed');
       return { data: null, error };
     }
   };
@@ -139,27 +115,35 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
       
       setUser(null);
       toast.success('Signed out successfully');
     } catch (error) {
-      console.log('Demo mode: Signing out');
-      setUser(null);
-      toast.success('Signed out successfully (Demo mode)');
+      toast.error(error.message || 'Sign out failed');
     }
   };
 
   const resetPassword = async (email) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
-      if (error) throw error;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/#/reset-password`
+      });
+      
+      if (error) {
+        toast.error(error.message);
+        return { error };
+      }
       
       toast.success('Password reset email sent!');
       return { error: null };
     } catch (error) {
-      toast.success('Password reset email sent! (Demo mode)');
-      return { error: null };
+      toast.error(error.message || 'Failed to send reset email');
+      return { error };
     }
   };
 
